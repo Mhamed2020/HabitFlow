@@ -19,6 +19,13 @@ services:
         value: "24"
       - key: CORS_ORIGIN
         value: https://mhamed2020.github.io
+      # Opening the API root in a browser redirects to the app.
+      - key: FRONTEND_URL
+        value: https://mhamed2020.github.io/HabitFlow/
+      # Dates are local time ('YYYY-MM-DD'): use the users' time zone, not the server's UTC,
+      # or check-ins for "today" are rejected between midnight and 2 a.m. Paris time.
+      - key: TZ
+        value: Europe/Paris
       - key: DATABASE_URL
         sync: false
       - key: DATABASE_AUTH_TOKEN

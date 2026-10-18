@@ -69,10 +69,18 @@ function cors(allowedOrigins: string[]): RequestHandler {
   };
 }
 
-export function createApp(db: Db, allowedOrigins: string[] = []) {
+/** `frontendUrl` (FRONTEND_URL): where a visit to the API root is redirected, e.g. the GitHub Pages site. */
+export function createApp(db: Db, allowedOrigins: string[] = [], frontendUrl?: string) {
   const app = express();
   app.use(cors(allowedOrigins));
   app.use(express.json());
+
+  // People who open the API's own URL in a browser land on the app instead of a 404.
+  if (frontendUrl) {
+    app.get('/', (_req, res) => {
+      res.redirect(302, frontendUrl);
+    });
+  }
 
   const requireHabit = async (raw: string, activeOnly = false) => {
     const id = parseId(raw);
