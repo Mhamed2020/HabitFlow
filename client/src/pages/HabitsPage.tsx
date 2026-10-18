@@ -4,8 +4,21 @@ import HabitItem from '../components/HabitItem';
 import { useHabits } from '../hooks/useHabits';
 
 export default function HabitsPage() {
-  const { habits, loading, loadError, actionError, dismissActionError, reload, create, update, archive, toggleCheckin } =
-    useHabits();
+  const {
+    habits,
+    loading,
+    loadError,
+    actionError,
+    dismissActionError,
+    reload,
+    create,
+    update,
+    archive,
+    lastArchived,
+    undoArchive,
+    dismissArchived,
+    toggleCheckin,
+  } = useHabits();
   const [adding, setAdding] = useState(false);
 
   return (
@@ -74,6 +87,31 @@ export default function HabitsPage() {
           ))}
         </ul>
       )}
+
+      <div aria-live="polite" className="fixed inset-x-4 bottom-4 z-20 mx-auto max-w-md">
+        {lastArchived && (
+          <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-900 px-4 py-3 text-sm text-white shadow-lg dark:bg-slate-100 dark:text-slate-900">
+            <span className="min-w-0 truncate">"{lastArchived.name}" archived</span>
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                onClick={() => void undoArchive()}
+                className="rounded-md px-3 py-1.5 font-semibold text-indigo-300 hover:bg-white/10 dark:text-indigo-600 dark:hover:bg-slate-900/10"
+              >
+                Undo
+              </button>
+              <button
+                type="button"
+                onClick={dismissArchived}
+                aria-label="Dismiss"
+                className="rounded-md px-2 py-1.5 font-bold opacity-70 hover:opacity-100"
+              >
+                &times;
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </section>
   );
 }
