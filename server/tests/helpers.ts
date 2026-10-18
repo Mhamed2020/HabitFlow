@@ -12,9 +12,9 @@ export function pinToday(date = TODAY) {
   vi.setSystemTime(new Date(y, m - 1, d, 12));
 }
 
-export async function setup(allowedOrigins: string[] = []) {
+export async function setup(allowedOrigins: string[] = [], frontendUrl?: string) {
   const db: Db = await createDb(':memory:');
-  const app = createApp(db, allowedOrigins);
+  const app = createApp(db, allowedOrigins, frontendUrl);
   return { db, app, api: () => request(app) };
 }
 

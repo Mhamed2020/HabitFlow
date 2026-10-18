@@ -10,4 +10,4 @@ const { url, authToken } = dbConfig(DB_FILE);
 const db = await createDb(url, authToken);
 const origins = (process.env.CORS_ORIGIN ?? '').split(',').map((o) => o.trim()).filter(Boolean);
 const port = Number(process.env.PORT) || 3001;
-createApp(db, origins).listen(port, () => console.log(`HabitFlow API on http://localhost:${port}`));
+createApp(db, origins, process.env.FRONTEND_URL || undefined).listen(port, () => console.log(`HabitFlow API on http://localhost:${port}`));

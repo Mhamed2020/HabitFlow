@@ -76,6 +76,8 @@ Variables d'environnement de l'API :
 | `DATABASE_URL` | URL Turso (`libsql://...`). Absente = fichier local `server/data/habitflow.db` |
 | `DATABASE_AUTH_TOKEN` | jeton Turso |
 | `CORS_ORIGIN` | origines autorisées, séparées par des virgules (ex. `https://mhamed2020.github.io`) |
+| `FRONTEND_URL` | redirection de la racine de l'API (`GET /`) vers le site, ex. `https://mhamed2020.github.io/HabitFlow/` |
+| `TZ` | fuseau des dates « aujourd'hui » (`Europe/Paris`) ; le serveur Render est en UTC |
 | `PORT` | port d'écoute (fourni par Render) |
 
 Côté client, le build Pages utilise `VITE_API_URL` (variable de dépôt GitHub `API_URL`) et

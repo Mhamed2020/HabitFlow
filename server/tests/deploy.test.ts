@@ -12,6 +12,22 @@ describe('GET /api/health', () => {
   });
 });
 
+describe('GET / (API root)', () => {
+  it('redirects to the frontend when FRONTEND_URL is set', async () => {
+    const { api } = await setup([], `${PAGES}/HabitFlow/`);
+    const res = await api().get('/');
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toBe(`${PAGES}/HabitFlow/`);
+  });
+
+  it('is a 404 NOT_FOUND without FRONTEND_URL', async () => {
+    const { api } = await setup();
+    const res = await api().get('/');
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('NOT_FOUND');
+  });
+});
+
 describe('CORS', () => {
   it('allows a configured origin, including the preflight request', async () => {
     const { api } = await setup([PAGES]);
