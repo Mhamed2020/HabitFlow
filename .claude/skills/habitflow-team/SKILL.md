@@ -7,7 +7,7 @@ tests), when creating or claiming a task, or when talking to another teammate.
 # HabitFlow - team playbook
 ## 1. Stack
 - Monorepo, npm workspaces: server/ and client/
-- server: Node 20, Express, better-sqlite3, zod. Port 3001. DB file: server/data/habitflow.db
+- server: Node >=22.22.2 (required by locked deps: vitest, jsdom), Express, better-sqlite3, zod. Port 3001. DB file: server/data/habitflow.db
 - client: React 18 + Vite + TypeScript (strict), Tailwind, Recharts. Port 5173, proxy /api -> 3001
 - tests: Vitest + Supertest (server), Vitest + Testing Library (client)
 ## 2. File ownership (never edit a file you do not own)
