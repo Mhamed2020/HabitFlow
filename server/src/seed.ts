@@ -1,14 +1,14 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createDb } from './db.js';
+import type { InStatement } from '@libsql/client';
+import { createDb, dbConfig, run } from './db.js';
 import { addDays, jsWeekday, today } from './dates.js';
 import { isScheduled } from './streaks.js';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
-const file = path.resolve(dir, '../data/habitflow.db');
-fs.mkdirSync(path.dirname(file), { recursive: true });
-const db = createDb(file);
+// Seeds the local file by default, or the database in DATABASE_URL (e.g. Turso).
+const { url, authToken } = dbConfig(path.resolve(dir, '../data/habitflow.db'));
+const db = await createDb(url, authToken);
 
 // Deterministic PRNG so the seed is reproducible.
 let s = 42;
@@ -24,25 +24,35 @@ const habits = [
 
 const t = today();
 const start = addDays(t, -89);
-const insHabit = db.prepare('INSERT INTO habits (name, color, frequency, created_at) VALUES (?, ?, ?, ?)');
-const insCheck = db.prepare('INSERT OR IGNORE INTO checkins (habit_id, date) VALUES (?, ?)');
 
-db.transaction(() => {
-  // Reset in place (the API server may hold the file open; deleting it fails on Windows).
-  db.exec("DELETE FROM checkins; DELETE FROM habits; DELETE FROM sqlite_sequence WHERE name IN ('habits','checkins');");
-  for (const h of habits) {
-    const id = Number(insHabit.run(h.name, h.color, JSON.stringify(h.frequency), start).lastInsertRowid);
-    for (let i = 0; i < 90; i++) {
-      const date = addDays(start, i);
-      if (!isScheduled(h.frequency, date)) continue;
-      // Slightly lower completion on weekends, improving over time; today is left open.
-      const wd = jsWeekday(date);
-      const weekend = wd === 0 || wd === 6 ? -0.1 : 0;
-      const trendBoost = (i / 90) * 0.1 - 0.05;
-      if (date !== t && rand() < h.rate + weekend + trendBoost) insCheck.run(id, date);
+// Reset in place (the API server may hold the file open; deleting it fails on Windows).
+await db.batch(
+  ['DELETE FROM checkins', 'DELETE FROM habits', "DELETE FROM sqlite_sequence WHERE name IN ('habits','checkins')"],
+  'write',
+);
+
+const checkins: InStatement[] = [];
+for (const h of habits) {
+  const id = await run(db, 'INSERT INTO habits (name, color, frequency, created_at) VALUES (?, ?, ?, ?)', [
+    h.name,
+    h.color,
+    JSON.stringify(h.frequency),
+    start,
+  ]);
+  for (let i = 0; i < 90; i++) {
+    const date = addDays(start, i);
+    if (!isScheduled(h.frequency, date)) continue;
+    // Slightly lower completion on weekends, improving over time; today is left open.
+    const wd = jsWeekday(date);
+    const weekend = wd === 0 || wd === 6 ? -0.1 : 0;
+    const trendBoost = (i / 90) * 0.1 - 0.05;
+    if (date !== t && rand() < h.rate + weekend + trendBoost) {
+      checkins.push({ sql: 'INSERT OR IGNORE INTO checkins (habit_id, date) VALUES (?, ?)', args: [id, date] });
     }
   }
-})();
+}
+// One round trip for all check-ins (matters for a remote database).
+await db.batch(checkins, 'write');
 
-console.log(`Seeded ${habits.length} habits x 90 days into ${file}`);
+console.log(`Seeded ${habits.length} habits x 90 days into ${url.startsWith('file:') ? url : 'DATABASE_URL'}`);
 db.close();

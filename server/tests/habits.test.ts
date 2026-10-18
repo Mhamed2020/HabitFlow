@@ -6,7 +6,7 @@ afterEach(() => vi.useRealTimers());
 
 describe('habits routes', () => {
   it('creates a habit with defaults (201) and lists it', async () => {
-    const { api } = setup();
+    const { api } = await setup();
     const res = await api().post('/api/habits').send({ name: 'Read' });
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({
@@ -23,7 +23,7 @@ describe('habits routes', () => {
   });
 
   it('rejects an empty name with the VALIDATION_ERROR format', async () => {
-    const { api } = setup();
+    const { api } = await setup();
     const res = await api().post('/api/habits').send({ name: '  ' });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -36,21 +36,21 @@ describe('habits routes', () => {
     [{ name: 'x', frequency: [1, 1] }],
     [{}],
   ])('rejects invalid body %j', async (body) => {
-    const { api } = setup();
+    const { api } = await setup();
     const res = await api().post('/api/habits').send(body);
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
   it('returns VALIDATION_ERROR for malformed JSON', async () => {
-    const { api } = setup();
+    const { api } = await setup();
     const res = await api().post('/api/habits').set('Content-Type', 'application/json').send('{bad');
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
   it('PATCH updates fields and returns the habit', async () => {
-    const { api } = setup();
+    const { api } = await setup();
     const { body: h } = await api().post('/api/habits').send({ name: 'A' });
     const res = await api().patch(`/api/habits/${h.id}`).send({ name: 'B', frequency: [3, 1], color: '#ff0000' });
     expect(res.status).toBe(200);
@@ -58,7 +58,7 @@ describe('habits routes', () => {
   });
 
   it('PATCH with no fields or invalid fields is a 400', async () => {
-    const { api } = setup();
+    const { api } = await setup();
     const { body: h } = await api().post('/api/habits').send({ name: 'A' });
     expect((await api().patch(`/api/habits/${h.id}`).send({})).status).toBe(400);
     const res = await api().patch(`/api/habits/${h.id}`).send({ name: '' });
@@ -66,7 +66,7 @@ describe('habits routes', () => {
   });
 
   it('returns 404 NOT_FOUND for unknown or non-numeric ids', async () => {
-    const { api } = setup();
+    const { api } = await setup();
     for (const res of [
       await api().patch('/api/habits/999').send({ name: 'x' }),
       await api().delete('/api/habits/999'),
@@ -78,14 +78,14 @@ describe('habits routes', () => {
   });
 
   it('returns 404 NOT_FOUND for unknown routes', async () => {
-    const { api } = setup();
+    const { api } = await setup();
     const res = await api().get('/api/nope');
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('NOT_FOUND');
   });
 
   it('DELETE archives: 204 and the habit is no longer listed', async () => {
-    const { api } = setup();
+    const { api } = await setup();
     const { body: h } = await api().post('/api/habits').send({ name: 'A' });
     await api().post('/api/habits').send({ name: 'B' });
     const del = await api().delete(`/api/habits/${h.id}`);
@@ -97,7 +97,7 @@ describe('habits routes', () => {
 
 describe('archived habits', () => {
   it('check-in POST/DELETE on an archived habit is 404 NOT_FOUND', async () => {
-    const { api } = setup();
+    const { api } = await setup();
     const { body: h } = await api().post('/api/habits').send({ name: 'A' });
     await api().delete(`/api/habits/${h.id}`);
     const post = await api().post(`/api/habits/${h.id}/checkins`).send({ date: TODAY });
