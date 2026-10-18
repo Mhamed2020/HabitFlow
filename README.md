@@ -4,7 +4,7 @@ Habit Tracker Dashboard — monorepo npm workspaces.
 
 | Workspace | Stack | Port |
 |-----------|-------|------|
-| `server/` | Node 20, Express, better-sqlite3, zod | 3001 |
+| `server/` | Node >=22.22.2, Express, libSQL (SQLite / Turso), zod | 3001 |
 | `client/` | React 18, Vite, TypeScript (strict), Tailwind, Recharts | 5173 (proxy `/api` → 3001) |
 
 ## Démarrage
@@ -60,6 +60,30 @@ Dates `YYYY-MM-DD` (heure locale), taux entre 0 et 1.
 - Un jour non planifié ne casse jamais une série.
 - Aujourd'hui non coché ne casse pas la série en cours.
 - `todayRate` = habitudes planifiées cochées aujourd'hui / habitudes planifiées aujourd'hui.
+
+## Déploiement
+
+| Partie | Hébergement | Déclenchement |
+|--------|-------------|---------------|
+| Frontend | GitHub Pages — https://mhamed2020.github.io/HabitFlow/ | `.github/workflows/deploy-pages.yml`, à chaque push sur `main` |
+| API | Render, offre gratuite (`render.yaml`) | auto-deploy sur `main` quand la CI passe |
+| Base de données | Turso (libSQL, compatible SQLite), offre gratuite | — |
+
+Variables d'environnement de l'API :
+
+| Variable | Rôle |
+|----------|------|
+| `DATABASE_URL` | URL Turso (`libsql://...`). Absente = fichier local `server/data/habitflow.db` |
+| `DATABASE_AUTH_TOKEN` | jeton Turso |
+| `CORS_ORIGIN` | origines autorisées, séparées par des virgules (ex. `https://mhamed2020.github.io`) |
+| `PORT` | port d'écoute (fourni par Render) |
+
+Côté client, le build Pages utilise `VITE_API_URL` (variable de dépôt GitHub `API_URL`) et
+`VITE_DEMO_FALLBACK=true` : tant que l'API ne répond pas (Render gratuit s'endort après ~15 min),
+le site affiche des données de démonstration avec un bandeau, puis propose de charger les vraies données.
+
+Remplir la base Turso : `DATABASE_URL=... DATABASE_AUTH_TOKEN=... npm run seed`.
+Santé de l'API : `GET /api/health` → `{ "status": "ok" }`.
 
 ## Structure
 

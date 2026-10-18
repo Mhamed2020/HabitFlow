@@ -8,9 +8,9 @@ interface Ctx {
   checks: Map<number, Set<string>>;
 }
 
-function loadCtx(db: Db): Ctx {
-  const habits = listHabits(db);
-  const checks = checkinsByHabit(db, habits.map((h) => h.id));
+async function loadCtx(db: Db): Promise<Ctx> {
+  const habits = await listHabits(db);
+  const checks = await checkinsByHabit(db, habits.map((h) => h.id));
   return { habits, checks };
 }
 
@@ -31,13 +31,13 @@ function dayCounts(ctx: Ctx, date: string): { count: number; total: number } {
 
 const rate = (count: number, total: number) => (total === 0 ? 0 : count / total);
 
-export function heatmap(db: Db, from: string, to: string) {
-  const ctx = loadCtx(db);
+export async function heatmap(db: Db, from: string, to: string) {
+  const ctx = await loadCtx(db);
   return dateRange(from, to).map((date) => ({ date, ...dayCounts(ctx, date) }));
 }
 
-export function trend(db: Db, days: number) {
-  const ctx = loadCtx(db);
+export async function trend(db: Db, days: number) {
+  const ctx = await loadCtx(db);
   const t = today();
   return dateRange(addDays(t, -(days - 1)), t).map((date) => {
     const { count, total } = dayCounts(ctx, date);
@@ -46,8 +46,8 @@ export function trend(db: Db, days: number) {
 }
 
 /** Aggregated over the last 90 days. 0 = Monday ... 6 = Sunday. */
-export function weekday(db: Db) {
-  const ctx = loadCtx(db);
+export async function weekday(db: Db) {
+  const ctx = await loadCtx(db);
   const t = today();
   const acc = Array.from({ length: 7 }, () => ({ count: 0, total: 0 }));
   for (const date of dateRange(addDays(t, -89), t)) {
@@ -59,8 +59,8 @@ export function weekday(db: Db) {
   return acc.map((a, i) => ({ weekday: i, rate: rate(a.count, a.total) }));
 }
 
-export function summary(db: Db) {
-  const ctx = loadCtx(db);
+export async function summary(db: Db) {
+  const ctx = await loadCtx(db);
   const t = today();
   const todayC = dayCounts(ctx, t);
   let count = 0;

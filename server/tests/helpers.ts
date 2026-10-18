@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
-import { createDb, type Db } from '../src/db.js';
+import { createDb, run, type Db } from '../src/db.js';
 
 /** Pinned "today": Wednesday 2026-03-18 (JS getDay() === 3). */
 export const TODAY = '2026-03-18';
@@ -12,23 +12,25 @@ export function pinToday(date = TODAY) {
   vi.setSystemTime(new Date(y, m - 1, d, 12));
 }
 
-export function setup() {
-  const db: Db = createDb(':memory:');
-  const app = createApp(db);
+export async function setup(allowedOrigins: string[] = []) {
+  const db: Db = await createDb(':memory:');
+  const app = createApp(db, allowedOrigins);
   return { db, app, api: () => request(app) };
 }
 
 export function insertHabit(
   db: Db,
   o: { name?: string; frequency?: number[]; createdAt?: string; archived?: boolean } = {},
-): number {
-  const info = db
-    .prepare('INSERT INTO habits (name, color, frequency, created_at, archived) VALUES (?, ?, ?, ?, ?)')
-    .run(o.name ?? 'Habit', '#6366f1', JSON.stringify(o.frequency ?? []), o.createdAt ?? '2025-01-01', o.archived ? 1 : 0);
-  return Number(info.lastInsertRowid);
+): Promise<number> {
+  return run(db, 'INSERT INTO habits (name, color, frequency, created_at, archived) VALUES (?, ?, ?, ?, ?)', [
+    o.name ?? 'Habit',
+    '#6366f1',
+    JSON.stringify(o.frequency ?? []),
+    o.createdAt ?? '2025-01-01',
+    o.archived ? 1 : 0,
+  ]);
 }
 
-export function check(db: Db, habitId: number, ...dates: string[]) {
-  const st = db.prepare('INSERT OR IGNORE INTO checkins (habit_id, date) VALUES (?, ?)');
-  for (const d of dates) st.run(habitId, d);
+export async function check(db: Db, habitId: number, ...dates: string[]) {
+  for (const d of dates) await run(db, 'INSERT OR IGNORE INTO checkins (habit_id, date) VALUES (?, ?)', [habitId, d]);
 }

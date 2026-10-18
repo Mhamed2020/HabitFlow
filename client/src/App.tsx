@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import DemoBanner from './components/DemoBanner';
 import ThemeToggle from './components/ThemeToggle';
 import { useTheme } from './hooks/useTheme';
 import HabitsPage from './pages/HabitsPage';
@@ -59,6 +60,7 @@ export default function App() {
           <ThemeToggle theme={theme} onToggle={toggle} />
         </div>
       </header>
+      <DemoBanner />
       <main className="mx-auto max-w-5xl px-4 py-6">
         {view === 'habits' ? <HabitsPage /> : <DashboardPage />}
       </main>

@@ -7,7 +7,7 @@ tests), when creating or claiming a task, or when talking to another teammate.
 # HabitFlow - team playbook
 ## 1. Stack
 - Monorepo, npm workspaces: server/ and client/
-- server: Node >=22.22.2 (required by locked deps: vitest, jsdom), Express, better-sqlite3, zod. Port 3001. DB file: server/data/habitflow.db
+- server: Node >=22.22.2 (required by locked deps: vitest, jsdom), Express, @libsql/client (SQLite file locally, Turso in production), zod. Port 3001. DB: server/data/habitflow.db, or DATABASE_URL
 - client: React 18 + Vite + TypeScript (strict), Tailwind, Recharts. Port 5173, proxy /api -> 3001
 - tests: Vitest + Supertest (server), Vitest + Testing Library (client)
 ## 2. File ownership (never edit a file you do not own)
@@ -30,6 +30,7 @@ GET /api/stats/summary -> { activeHabits, todayRate, bestStreak, rate30d }
 GET /api/stats/heatmap?from&to -> { date, count, total }[]
 GET /api/stats/trend?days=30 -> { date, rate }[]
 GET /api/stats/weekday -> { weekday, rate }[] (0 = Monday ... 6 = Sunday)
+GET /api/health -> { status: "ok" } (checks the database; used by Render and smoke tests)
 Errors: { "error": { "code": "VALIDATION_ERROR" | "NOT_FOUND" | "INTERNAL", "message": string } }
 Dates: always 'YYYY-MM-DD' local time. Rates: numbers between 0 and 1.
 Shared TS types live in client/src/types/api.ts (owned by frontend, mirrors this contract).
