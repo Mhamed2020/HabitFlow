@@ -2,6 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import * as api from '../api';
 import type { Habit, HabitInput } from '../types/api';
 
+/** How long the "Undo" notice stays after archiving. */
+export const UNDO_MS = 6000;
+
 const msg = (e: unknown) => (e instanceof Error ? e.message : 'Something went wrong');
 
 export function useHabits() {
@@ -11,6 +14,8 @@ export function useHabits() {
   const [actionError, setActionError] = useState<string | null>(null);
   const mounted = useRef(true);
   const pending = useRef(0);
+  const [lastArchived, setLastArchived] = useState<Habit | null>(null);
+  const archivedTimer = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     mounted.current = true;
@@ -58,15 +63,39 @@ export function useHabits() {
     setHabits((h) => h.map((x) => (x.id === habit.id ? updated : x)));
   }, []);
 
+  const clearArchived = useCallback(() => {
+    clearTimeout(archivedTimer.current);
+    setLastArchived(null);
+  }, []);
+
+  useEffect(() => () => clearTimeout(archivedTimer.current), []);
+
   const archive = useCallback(async (habit: Habit) => {
     setActionError(null);
     try {
       await api.archiveHabit(habit.id);
       setHabits((h) => h.filter((x) => x.id !== habit.id));
+      clearTimeout(archivedTimer.current);
+      setLastArchived(habit);
+      archivedTimer.current = setTimeout(() => setLastArchived(null), UNDO_MS);
     } catch (e) {
       setActionError(`Could not archive "${habit.name}": ${msg(e)}`);
     }
   }, []);
+
+  const undoArchive = useCallback(async () => {
+    const habit = lastArchived;
+    if (!habit) return;
+    clearArchived();
+    setActionError(null);
+    try {
+      const restored = await api.updateHabit(habit.id, { archived: false });
+      // keep the API's ordering (by id)
+      setHabits((h) => [...h.filter((x) => x.id !== restored.id), restored].sort((a, b) => a.id - b.id));
+    } catch (e) {
+      setActionError(`Could not restore "${habit.name}": ${msg(e)}`);
+    }
+  }, [lastArchived, clearArchived]);
 
   const toggleCheckin = useCallback(
     async (habit: Habit, date: string, index: number) => {
@@ -104,6 +133,9 @@ export function useHabits() {
     create,
     update,
     archive,
+    lastArchived,
+    undoArchive,
+    dismissArchived: clearArchived,
     toggleCheckin,
   };
 }

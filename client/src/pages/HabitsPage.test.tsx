@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as api from '../api';
@@ -94,5 +94,50 @@ describe('HabitsPage', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Add habit' }));
     expect(m.createHabit).toHaveBeenCalledWith({ name: 'Run', color: '#6366f1', frequency: [] });
     expect(await screen.findByRole('checkbox', { name: `Run on ${last7Dates()[6]}` })).toBeInTheDocument();
+  });
+
+  it('archives a habit and restores it in place with Undo', async () => {
+    m.listHabits.mockResolvedValue([habit(), habit({ id: 2, name: 'Run' })]);
+    m.archiveHabit.mockResolvedValue(undefined);
+    m.updateHabit.mockResolvedValue(habit());
+    render(<HabitsPage />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Archive Read' }));
+    expect(m.archiveHabit).toHaveBeenCalledWith(1);
+    expect(await screen.findByText('"Read" archived')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Read' })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(m.updateHabit).toHaveBeenCalledWith(1, { archived: false });
+    await waitFor(() =>
+      expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Read', 'Run']),
+    );
+    expect(screen.queryByText('"Read" archived')).not.toBeInTheDocument();
+  });
+
+  it('hides the Undo notice after a few seconds', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      m.listHabits.mockResolvedValue([habit()]);
+      m.archiveHabit.mockResolvedValue(undefined);
+      render(<HabitsPage />);
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      await user.click(await screen.findByRole('button', { name: 'Archive Read' }));
+      expect(await screen.findByRole('button', { name: 'Undo' })).toBeInTheDocument();
+      await act(() => vi.advanceTimersByTimeAsync(6000));
+      expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('shows an alert when Undo fails and keeps the habit archived', async () => {
+    m.listHabits.mockResolvedValue([habit()]);
+    m.archiveHabit.mockResolvedValue(undefined);
+    m.updateHabit.mockRejectedValue(new Error('down'));
+    render(<HabitsPage />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Archive Read' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Undo' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not restore "Read": down');
+    expect(screen.queryByRole('heading', { name: 'Read' })).not.toBeInTheDocument();
   });
 });
