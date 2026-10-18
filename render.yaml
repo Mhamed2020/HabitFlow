@@ -1,0 +1,25 @@
+# Render Blueprint for the HabitFlow API (server/ workspace).
+# Free plan: the service sleeps after ~15 min without traffic and takes ~1 min to wake up;
+# the GitHub Pages frontend shows demo data meanwhile. The filesystem is ephemeral, so data
+# lives in Turso (DATABASE_URL / DATABASE_AUTH_TOKEN), set in the Render dashboard.
+services:
+  - type: web
+    name: habitflow-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    # Deploy only commits whose GitHub checks (CI) passed.
+    autoDeployTrigger: checksPass
+    buildCommand: npm ci
+    startCommand: npm start -w server
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: CORS_ORIGIN
+        value: https://mhamed2020.github.io
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_AUTH_TOKEN
+        sync: false

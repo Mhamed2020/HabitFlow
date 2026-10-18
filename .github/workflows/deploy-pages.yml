@@ -1,8 +1,8 @@
 name: Deploy client to GitHub Pages
 
 # Publishes the static frontend (client/) to GitHub Pages.
-# Note: Pages is static hosting only. The Express API (server/) is NOT deployed
-# here, so /api calls fail until the client can target a separately hosted backend.
+# Pages is static hosting only: the Express API (server/) runs on Render (render.yaml).
+# The client calls it through VITE_API_URL and shows demo data while it is unreachable.
 
 on:
   push:
@@ -53,6 +53,11 @@ jobs:
         run: npm run build -w client -- --base="${BASE_PATH}/"
         env:
           BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          # Hosted API origin, from the repo variable API_URL (e.g. https://habitflow-api.onrender.com).
+          # Unset = no backend yet: the site runs on demo data only.
+          VITE_API_URL: ${{ vars.API_URL }}
+          # Show demo data while the free-tier API sleeps or is unreachable.
+          VITE_DEMO_FALLBACK: "true"
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
