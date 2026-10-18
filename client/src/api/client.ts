@@ -9,16 +9,63 @@ import {
   type TrendPoint,
   type WeekdayRate,
 } from '../types/api';
+import { handleDemo } from './demo';
+import { API_BASE, DEMO_FALLBACK, getApiMode, setApiMode } from './mode';
+
+export { getApiMode, subscribeApiMode, type ApiMode } from './mode';
+
+/** A sleeping free-tier backend can take ~1 min to wake up: switch to demo data well before that. */
+const FALLBACK_TIMEOUT_MS = 8000;
+const HEALTH_POLL_MS = 15000;
+
+/** While on demo data, poll the real API and tell the UI once it answers. */
+function watchForServer() {
+  if (!API_BASE) return;
+  const timer = setInterval(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/health`);
+      if (res.ok) {
+        clearInterval(timer);
+        setApiMode('demo-server-ready');
+      }
+    } catch {
+      /* still asleep */
+    }
+  }, HEALTH_POLL_MS);
+}
+
+function enterDemo() {
+  if (getApiMode() !== 'live') return;
+  setApiMode('demo');
+  watchForServer();
+}
+
+async function demoRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const body = typeof init?.body === 'string' ? JSON.parse(init.body) : undefined;
+  const result = handleDemo(init?.method ?? 'GET', path, body);
+  // Copy, so callers never share objects with the demo store.
+  return (result === undefined ? undefined : JSON.parse(JSON.stringify(result))) as T;
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  if (getApiMode() !== 'live') return demoRequest<T>(path, init);
   let res: Response;
+  const abort = new AbortController();
+  const timer = DEMO_FALLBACK ? setTimeout(() => abort.abort(), FALLBACK_TIMEOUT_MS) : undefined;
   try {
-    res = await fetch(path, {
+    res = await fetch(API_BASE + path, {
       ...init,
+      signal: abort.signal,
       headers: init?.body ? { 'Content-Type': 'application/json', ...init.headers } : init?.headers,
     });
   } catch {
+    if (DEMO_FALLBACK) {
+      enterDemo();
+      return demoRequest<T>(path, init);
+    }
     throw new ApiError('NETWORK', 'Network error: could not reach the server');
+  } finally {
+    clearTimeout(timer);
   }
   if (!res.ok) {
     let body: Partial<ApiErrorBody> | null = null;
